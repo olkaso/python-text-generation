@@ -59,4 +59,3 @@ def run(in_file, out_file, depth):
     tokens = get_tokens(in_file)
     count_probabilities(tokens, depth)
     pickle.dump(count_probabilities(tokens, depth), out_file)
-

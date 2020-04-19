@@ -22,4 +22,3 @@ elif args.mode == 'calculate_probabilities':
     out_file.close()
 else:
     print('Incorrect mode')
-
