@@ -3,7 +3,7 @@ from random import random
 import string
 
 fullstop = '.?!'
-bracket_pair = {'{': '}', '(': ')', '[': ']', '"': '"', "'" : "'", "}" : '{', ')' : '(', "]" : '['}
+bracket_pair = {'{': '}', '(': ')', '[': ']', '"': '"', "'": "'", "}": '{', ')': '(', "]": '['}
 punct = '.,:;?!'
 
 
@@ -92,7 +92,7 @@ def run(in_file, depth, tokens_number, out_file=None):
     cap = not tokens_list[0][0].isupper()
     text = tokens_list[0]
     for token in tokens_list[1:]:
-        if not token in string.punctuation and cap:
+        if token not in string.punctuation and cap:
             token = token.capitalize()
             cap = False
         i += 1

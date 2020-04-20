@@ -15,8 +15,8 @@ def get_tokens(in_file):
             word = ''
             for i in token:
                 ind += 1
-                if i in string.punctuation and (i != '-' or (ind == 0 or ind == len(token) -1)
-                    or not (token[ind+1].isalpha() and token[ind-1].isalpha())) \
+                if i in string.punctuation and (i != '-' or (ind == 0 or ind == len(token) - 1)
+                                                or not (token[ind+1].isalpha() and token[ind-1].isalpha())) \
                         and (i != "'" or ind == 0 or ind == len(token) - 1 or
                              not (token[ind+1].isalpha() and token[ind-1].isalpha())):
                     if word != '':
