@@ -30,8 +30,8 @@ def get_generated_text(probs, tokens_number, depth):
                     if i == 0 or i == tokens_number-2 or (token in punct and text[-1] in punct) \
                             or token == '-' or text[-1] == '-':
                         pr = 0
-                    elif token in ')}]' and len(brackets) == 0 or brackets[-1] != bracket_pair[token] \
-                            or text[-1] in '{[[:;-':
+                    elif token in ')}]' and (len(brackets) == 0 or brackets[-1] != bracket_pair[token]
+                                             or text[-1] in '{[[:;-'):
                             pr = 0
                     elif token == '"' and (quote_open and brackets[-1] != '"') or text[-1] in '":;-':
                             pr = 0
