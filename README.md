@@ -1,8 +1,9 @@
 Запуск в режиме подсчета вероятностей
-python3 main.py calculate_probabilities --input_file text.txt --output_file probabilities.pickle --depth 3
+ python3 main.py calculate_probabilities text.txt probs.pickle 3
+
 
 Запуск в режиме генерации:
-python3 main.py generate_text --input_file probabilities.pickle --output_file generated.txt --depth 3 --tokens_number 300 
+ python3 main.py generate_text probs.pickle 3 300 --output_file generated.txt
 * Если не указать output_file в режиме генерации, то выведет текст в стандартный поток
 
 
