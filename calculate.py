@@ -3,8 +3,6 @@ import string
 from collections import defaultdict
 import re
 
-good_chars = '[^a-zA-ZА-Яа-я ' + string.punctuation + ']'
-
 
 def get_tokens(in_file):
     tokens = list()
@@ -12,25 +10,7 @@ def get_tokens(in_file):
     inp = re.sub(r'[^a-zA-ZА-Яа-я\s.,:;(){}"?!\'\[\]\-]', '', inp)
     inp = inp.split()
     for token in inp:
-        ind = 0
-        if not token.isalpha():
-            word = ''
-            for i in token:
-                if i in string.punctuation and (i != '-' or (ind == 0 or ind == len(token) - 1)
-                                                or not (token[ind+1].isalpha() and token[ind-1].isalpha())) \
-                        and (i != "'" or ind == 0 or ind == len(token) - 1 or
-                             not (token[ind+1].isalpha() and token[ind-1].isalpha())):
-                    if word != '':
-                        tokens.append(word)
-                        word = ''
-                    tokens.append(i)
-                else:
-                    word += i
-                ind += 1
-            if word != '':
-                tokens.append(word)
-        else:
-            tokens.append(token)
+        tokens += (re.findall(r"(\w+'\w+|\w+-\w+|\w+|.|:|;|[(]|[)]|{|}|\"|[?]|!|'|[|]|-)",  token))
     return tokens
 
 
