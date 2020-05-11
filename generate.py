@@ -9,185 +9,190 @@ OPENING_BRACKETS = '{[('
 CLOSING_BRACKETS = '}])'
 
 
-class Sentence:
+class TextState:
     unary_quote_open: bool = False
     double_quote_open: bool = False
     brackets: list = []
     cap: bool = False
-    paragraph_size: int = 0
+    current_paragraph_size: int = 0
     new_paragraph: bool = False
+    current_token_index = 0
+    text = ""
+    last_tokens = ()
+    tokens_list = []
+    paragraph_size: int = 100
 
 
-def can_be_next(token, current_token, text, tokens_number, sentence):
+def can_be_next(token, tokens_number, text):
     if token not in string.punctuation:
         return True
-    if current_token == 0 or current_token == tokens_number - 2 or (token in PUNCT and text[-1] in PUNCT)\
-            or token == '-' or text[-1] == '-':
+    if text.current_token_index == 0 or text.current_token_index == tokens_number - 2 or \
+            (token in PUNCT and text.tokens_list[-1] in PUNCT) or token == '-' or text.tokens_list[-1] == '-':
         return False
-    if token in CLOSING_BRACKETS and (len(sentence.brackets) == 0 or sentence.brackets[-1] != BRACKET_PAIR[token]
-                                      or text[-1] in '{[[:;-,'):
+    if token in CLOSING_BRACKETS and (len(text.brackets) == 0 or text.brackets[-1] != BRACKET_PAIR[token]
+                                      or text.text[-1] in '{[[:;-,'):
         return False
-    if token == '"' and (sentence.double_quote_open and sentence.brackets[-1] != '"') or text[-1] in '":;-':
+    if token == '"' and (text.double_quote_open and text.brackets[-1] != '"') \
+            or text.tokens_list[-1] in '":;-':
         return False
-    if token == "'" and (sentence.unary_quote_open and sentence.brackets[-1] != "'") or text[-1] in "':;-":
+    if token == "'" and (text.unary_quote_open and text.brackets[-1] != "'") or \
+            text.tokens_list[-1] in "':;-":
         return False
     return True
 
 
-def close_brackets(brackets, current_token, text, new_tokens):
-    if brackets:
-        current_token += len(brackets)
-        text += [BRACKET_PAIR[br] for br in reversed(brackets)]
-        new_tokens += [BRACKET_PAIR[br] for br in reversed(brackets)]
-        brackets.clear()
-    return current_token, text, new_tokens
+def close_brackets(text, new_tokens):
+    if text.brackets:
+        text.current_token_index += len(text.brackets)
+        text.tokens_list += [BRACKET_PAIR[br] for br in reversed(text.brackets)]
+        new_tokens += [BRACKET_PAIR[br] for br in reversed(text.brackets)]
+        text.brackets.clear()
+    return new_tokens
 
 
-def choose_next_token(probs, last, current_token, text, tokens_number, sentence):
-    while last not in probs:
-        last = last[1:]
+def choose_next_token(probs, text, tokens_number):
+    while text.last_tokens not in probs:
+        text.last_tokens = text.last_tokens[1:]
     next_token = ""
     while not next_token:
         possible_tokens = dict()
-        for token in probs[last].keys():
-            if can_be_next(token, current_token, text, tokens_number, sentence):
-                possible_tokens[token] = probs[last][token]
+        for token, token_proba in probs[text.last_tokens].items():
+            if can_be_next(token, tokens_number, text):
+                possible_tokens[token] = token_proba
         if not possible_tokens:
-            last = last[1:]
+            text.last_tokens = text.last_tokens[1:]
         else:
-            thr = random()*sum(possible_tokens.values())
+            thr = random() * sum(possible_tokens.values())
             prob_sum = 0
             for token in possible_tokens.keys():
                 prob_sum += possible_tokens[token]
                 if prob_sum > thr:
-                    next_token = token
-                    break
-    return next_token, last
+                    return token
 
 
-def process_quotes(next_token, sentence):
+def process_quotes(next_token, text):
     if next_token == '"':
-        if sentence.double_quote_open:
-            sentence.brackets = sentence.brackets[:-1]
+        if text.double_quote_open:
+            text.brackets = text.brackets[:-1]
         else:
-            sentence.brackets.append(next_token)
+            text.brackets.append(next_token)
     if next_token == "'":
-        if sentence.unary_quote_open:
-            sentence.brackets = sentence.brackets[:-1]
+        if text.unary_quote_open:
+            text.brackets = text.brackets[:-1]
         else:
-            sentence.brackets.append(next_token)
-    return sentence.brackets
+            text.brackets.append(next_token)
+    return text.brackets
 
 
-def process_full_stop(sentence, text):
-    sentence.cap = True
-    if sentence.paragraph_size > 100:
-        sentence.new_paragraph = True
-    if sentence.double_quote_open:
-        if text[-1].isspace():
-            text = text[:-1]
-        text += '"'
-        sentence.double_quote_open = not sentence.double_quote_open
-    if sentence.unary_quote_open:
-        if text[-1].isspace():
-            text = text[:-1]
-        text += "'"
-        sentence.unary_quote_open = not sentence.unary_quote_open
-    return sentence, text
+def process_full_stop(text):
+    text.cap = True
+    if text.current_paragraph_size > text.paragraph_size:
+        text.new_paragraph = True
+    if text.double_quote_open:
+        if text.text[-1].isspace():
+            text.text = text.text[:-1]
+        text.text += '"'
+        text.double_quote_open = not text.double_quote_open
+    if text.unary_quote_open:
+        if text.text[-1].isspace():
+            text.text = text.text[:-1]
+        text.text += "'"
+        text.unary_quote_open = not text.unary_quote_open
 
 
-def add_spaces_to_quotes(text, token, sentence):
+def add_spaces_to_quotes(token, text):
     if token == '"':
-        if not sentence.double_quote_open:
-            if not text[-1].isspace():
-                text += " "
+        if not text.double_quote_open:
+            if not text.text[-1].isspace():
+                text.text += " "
         else:
-            if text[-1].isspace():
-                text = text[:-1]
+            if text.text[-1].isspace():
+                text.text = text.text[:-1]
             token += " "
-        sentence.double_quote_open = not sentence.double_quote_open
+        text.double_quote_open = not text.double_quote_open
     if token == "'":
-        if not sentence.unary_quote_open:
-            if not text[-1].isspace():
-                text += " "
+        if not text.unary_quote_open:
+            if not text.text[-1].isspace():
+                text.text += " "
         else:
-            if text[-1].isspace():
-                text = text[:-1]
+            if text.text[-1].isspace():
+                text.text = text.text[:-1]
             token += " "
-        sentence.unary_quote_open = not sentence.unary_quote_open
-    return text, token, sentence
+        text.unary_quote_open = not text.unary_quote_open
+    return token
 
 
-def add_spaces(new_tokens, text, tokens_list, i, sentence):
+def add_spaces(new_tokens, text):
     for token in new_tokens:
         if token in FULL_STOP:
-            sentence, text = process_full_stop(sentence, text)
+            process_full_stop(text)
         if token in PUNCT:
-            if text[-1].isspace():
-                text = text[:-1]
+            if text.text[-1].isspace():
+                text.text = text.text[:-1]
         elif token == '"' or token == "'":
-            text, token, sentence = add_spaces_to_quotes(text, token, sentence)
+            token = add_spaces_to_quotes(token, text)
         elif token in OPENING_BRACKETS + '-':
-            text += " "
+            text.text += " "
         elif token in CLOSING_BRACKETS:
-            if text[-1].isspace():
-                text = text[:-1]
+            if text.text[-1].isspace():
+                text.text = text.text[:-1]
         elif token[0].isalpha():
-            if len(tokens_list[i - 1]) > 1 or tokens_list[i - 1].isalpha() or tokens_list[i - 1] in ".,!?:;)]}-":
-                if not text[-1].isspace():
-                    text += " "
-        text += token
-    return text, sentence
+            if len(text.tokens_list[text.current_token_index - 1]) > 1 or \
+                    text.tokens_list[text.current_token_index - 1].isalpha() or \
+                    text.tokens_list[text.current_token_index - 1] in ".,!?:;)]}-":
+                if not text.text[-1].isspace():
+                    text.text += " "
+        text.text += token
 
 
-def get_generated_text(probs, tokens_number, depth):
-    tokens_list = list()
-    last = tuple()
-    sentence = Sentence()
-    current_token = 0
-    text = ""
-    while len(tokens_list) < tokens_number - 1:
-        new_tokens = []
-        if current_token == 1:
-            sentence.paragraph_size += 1
-            text = tokens_list[0].capitalize()
-            sentence.cap = not text[0][0].isupper()
-
-        next_token, last = choose_next_token(probs, last, current_token, tokens_list,
-                                             tokens_number, sentence)
-        token = next_token
-        if token not in string.punctuation and sentence.cap:
-            token = token.capitalize()
-            sentence.cap = False
-        if next_token in FULL_STOP:
-            current_token, tokens_list, new_tokens = close_brackets(sentence.brackets, current_token,
-                                                                    tokens_list, new_tokens)
-        if next_token in CLOSING_BRACKETS:
-            sentence.brackets = sentence.brackets[:-1]
-        if next_token in OPENING_BRACKETS:
-            sentence.brackets.append(next_token)
-        sentence.brackets = process_quotes(next_token, sentence)
-        tokens_list.append(next_token)
-        new_tokens.append(token)
-        if current_token:
-            text, sentence = add_spaces(new_tokens, text, tokens_list, current_token, sentence)
-        sentence.paragraph_size += 1
-        if sentence.new_paragraph:
-            text += '\n\n'
-            sentence.paragraph_size = 0
-            sentence.new_paragraph = False
-        current_token += 1
-        last += tuple(next_token)
-        if len(last) > depth - 1:
-            last = last[1:]
-    text += ''.join([BRACKET_PAIR[br] for br in reversed(sentence.brackets)])
-    text += '.'
-    return text
+def add_token(probs, text, tokens_number):
+    new_tokens = []
+    if text.current_token_index == 1:
+        text.current_paragraph_size += 1
+        text.text = text.tokens_list[0].capitalize()
+        text.cap = not text.text[0][0].isupper()
+    next_token = choose_next_token(probs, text, tokens_number)
+    token = next_token
+    if token not in string.punctuation and text.cap:
+        token = token.capitalize()
+        text.cap = False
+    if next_token in FULL_STOP:
+        new_tokens = close_brackets(text, new_tokens)
+    if next_token in CLOSING_BRACKETS:
+        text.brackets = text.brackets[:-1]
+    if next_token in OPENING_BRACKETS:
+        text.brackets.append(next_token)
+    text.brackets = process_quotes(next_token, text)
+    text.tokens_list.append(next_token)
+    new_tokens.append(token)
+    if text.current_token_index:
+        add_spaces(new_tokens, text)
+    text.current_paragraph_size += 1
+    if text.new_paragraph:
+        text.text += '\n\n'
+        text.current_paragraph_size = 0
+        text.new_paragraph = False
+    return next_token
 
 
-def run_generation(in_file, depth, tokens_number, out_file=None):
-    probs = pickle.load(in_file)
-    text = get_generated_text(probs, tokens_number, depth)
+def get_generated_text(probs, tokens_number, depth, paragraph_size):
+    text = TextState()
+    text.paragraph_size = paragraph_size
+    while len(text.tokens_list) < tokens_number - 1:
+        next_token = add_token(probs, text, tokens_number)
+        text.current_token_index += 1
+        text.last_tokens += tuple(next_token)
+        if len(text.last_tokens) > depth - 1:
+            text.last_tokens = text.last_tokens[1:]
+    text.text += ''.join([BRACKET_PAIR[br] for br in reversed(text.brackets)])
+    text.text += '.'
+    return text.text
+
+
+def run_generation(in_file, depth, tokens_number, paragraph_size, out_file=None):
+    with open(in_file, 'rb') as in_file:
+        probs = pickle.load(in_file)
+    text = get_generated_text(probs, tokens_number, depth, paragraph_size)
     if out_file is not None:
         with open(out_file, 'w') as out_file:
             out_file.write(text)
