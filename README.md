@@ -1,4 +1,4 @@
-Запуск в режиме подсчета вероятностей
+Запуск в режиме подсчета вероятностей:
 python3 main.py calculate_probabilities --input_file text.txt --output_file probabilities.pickle --depth 3
 
 Запуск в режиме генерации:
